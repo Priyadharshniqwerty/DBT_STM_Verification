@@ -1,0 +1,146 @@
+================================================================================
+STM ↔ DBT Verifier — Run Steps
+================================================================================
+
+PREREQUISITES
+-------------
+- Python 3.12+ installed
+- Virtual environment created (already done in .venv/)
+
+STEP 1: Activate Virtual Environment
+-------------------------------------
+Windows CMD:
+    cd DBT_STM_Comversion
+    .venv\Scripts\activate
+
+Windows PowerShell:
+    cd DBT_STM_Comversion
+    .\.venv\Scripts\Activate.ps1
+
+Git Bash:
+    cd DBT_STM_Comversion
+    source .venv/Scripts/activate
+
+STEP 2: Install Dependencies (first time only)
+-----------------------------------------------
+    pip install -r requirements.txt
+
+STEP 3: Start the Server
+-------------------------
+    python server/app.py
+
+Server starts at: http://localhost:5000
+
+STEP 4: Use the Web UI
+-----------------------
+1. Open http://localhost:5000 in your browser
+2. Step 1 — Select LOB:
+   - Click "Business Owners Policy" (BOP) or "Commercial Auto" (CA)
+3. Step 2 — Select Model:
+   - Click any model → comparison runs automatically
+   - Or click "Compare All Models" for batch
+   - Union models (covgterm, condterm, exclterm) resolve to sub-models
+4. Step 3 — View Results (4 tabs):
+   - Comparison: Summary bar + side-by-side table (frozen headers, filterable)
+   - STM Data: Source columns, mapping, business rules
+   - SQL Code: Raw DBT SQL (with Jinja if present)
+   - Compiled Code: Fully expanded SQL (macros resolved to real CASE/CTE logic)
+
+SERVER RESTART BEHAVIOR
+------------------------
+- Server always starts fresh at Step 1 (Select LOB)
+- No session auto-restore — pick LOB/model each time
+- "Back to Models" is instant (uses in-memory cache)
+- STM parsing cached for 5 minutes on the server side
+
+FILE PLACEMENT
+--------------
+    data/stm/              → STM workbooks (.xlsx, .xlsm)
+    data/sql/bop/          → BOP SQL files (17 models)
+    data/sql/ca/           → CA SQL files (71 models)
+    data/macros/           → Macro .sql files (41 files, used by compiler)
+
+Current files:
+    data/stm/Businessowners Policy Data Specifications.xlsm   (BOP — 12 data tabs)
+    data/stm/Commercial Auto Data Specifications.xlsx          (CA — 54 data tabs)
+    data/sql/bop/ (17 models: polline, bldg, sblocation, covgterm x4, condterm x2,
+                   exclterm x2, modifier, ratefactor, premtxn, additionalintrst,
+                   classification, jurisdiction)
+    data/sql/ca/  (71 models: 5 vehicles, 19 covgterms, 9 condterms, 9 exclterms,
+                   14 scheditems, 12 entity models, 4 union models)
+    data/macros/  (41 macro files: m_cleansing, m_int_term, m_scd2_scd1, etc.)
+
+Note: Non-data tabs (Template, Sample, Instructions, etc.) are automatically
+filtered out when the STM is parsed — they will NOT appear in Step 2.
+
+OUTPUT
+------
+Results saved per run:
+    data/results/<timestamp>/
+        ├── <model_name>.xlsx       # One per model
+        └── run_log.txt             # Full run log
+
+ADDING A NEW LOB
+-----------------
+1. Place STM file (.xlsx or .xlsm) in data/stm/
+2. Create SQL folder: data/sql/<lob_name>/
+3. Add SQL model files to the folder
+4. Add entry to LOB_CONFIG in ALL 3 route files:
+   - server/routes/upload.py
+   - server/routes/compare.py
+   - server/routes/models.py
+   Format:
+       "<lob_id>": {
+           "name": "Display Name",
+           "stm_file": "filename.xlsx",
+           "sql_folder": "<lob_name>",
+       }
+5. Add model aliases in services/model_matcher.py ENTITY_ALIASES if needed
+6. Add any LOB-specific non-data tab names to SKIP_TABS in excel_parser.py
+7. Restart server
+
+ADDING A NEW SQL MODEL TO EXISTING LOB
+---------------------------------------
+1. Create the .sql file in data/sql/<lob>/ following one of these patterns:
+
+   a) Full dimension model:
+      - {{ config(materialized='table') }}
+      - Source CTEs (WITH ... SELECT * FROM {{ source(...) }})
+      - Business Mapping (SELECT with key construction + column expressions)
+      - Cleansing (_cleaned CTE with {{ m_cleanse(...) }} macros)
+      - SCD Configuration (key_cols, scd2_cols, scd1_cols + {{ m_scd2_scd1(...) }})
+
+   b) Macro term model (for coverage/condition/exclusion terms):
+      - Set variables (term_table_name, lob, clause_type, etc.)
+      - {{ m_int_term(...) }} call
+
+   c) Union model (aggregates sub-models):
+      - select * from {{ ref('sub_model_1') }}
+      - union all
+      - select * from {{ ref('sub_model_2') }}
+
+   d) Fact/transaction table (no SCD):
+      - Same as (a) but ends with SELECT * FROM _cleaned (no m_scd2_scd1)
+
+2. Add alias in model_matcher.py if entity name doesn't naturally match STM tab
+3. Restart server — new model appears automatically
+
+COLUMNS NOT INCLUDED IN SQL MODELS
+------------------------------------
+- ROW_PROC_DTS — removed from all models (will show as "NOT FOUND in DBT")
+- X_SEQ_NO — removed from all BOP models (will show as "NOT FOUND in DBT")
+These are intentional — the comparison will flag them as missing, which is expected.
+
+TROUBLESHOOTING
+---------------
+- "Could not match model to any STM tab" → Add alias in model_matcher.py ENTITY_ALIASES
+- Non-data tabs showing in Step 2 → Add tab name to SKIP_TABS in excel_parser.py
+- "compare_columns not defined" → Check imports in services/comparator.py
+- Low match rate → Use compiled SQL from dbt target/ folder
+- Port 5000 in use → Change in server/app.py: app.run(port=5001)
+- "0 columns found" → Pure macro file; compiler expands m_int_term automatically
+- Column name mismatch → Check STM for spaces instead of underscores
+- .xlsm file not detected → Ensure .xlsm is in ALLOWED_STM_EXTENSIONS in config.py
+- "Back to Models" slow → Restart server (cache may have expired)
+- SCD shows "-" for term models → Check _get_m_int_term_scd_types in sql_parser.py
+- DBT DataType shows "-" → Type could not be inferred from expression or m_cleanse

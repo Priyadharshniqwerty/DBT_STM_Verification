@@ -1,0 +1,350 @@
+<title>Git Workflow</title>
+<style>
+@font-face {
+  font-family: 'JetBrains';
+  src: local('JetBrains Mono'), local('Consolas'), local('monospace');
+}
+
+:root {
+  --ground: #fafbfc;
+  --surface: #ffffff;
+  --border: #e1e4e8;
+  --text-primary: #1b1f23;
+  --text-secondary: #586069;
+  --text-muted: #6a737d;
+  --accent: #0366d6;
+  --accent-subtle: #f1f8ff;
+  --code-bg: #1e2127;
+  --code-text: #e6edf3;
+  --code-comment: #8b949e;
+  --code-keyword: #ff7b72;
+  --code-string: #a5d6ff;
+  --success: #28a745;
+  --warning: #d29922;
+  --danger: #d73a49;
+  --step-bg: #f6f8fa;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --ground: #0d1117;
+    --surface: #161b22;
+    --border: #30363d;
+    --text-primary: #e6edf3;
+    --text-secondary: #8b949e;
+    --text-muted: #6e7681;
+    --accent: #58a6ff;
+    --accent-subtle: #0d2240;
+    --code-bg: #0d1117;
+    --code-text: #e6edf3;
+    --success: #3fb950;
+    --warning: #d29922;
+    --danger: #f85149;
+    --step-bg: #1c2128;
+  }
+}
+
+:root[data-theme="dark"] {
+  --ground: #0d1117;
+  --surface: #161b22;
+  --border: #30363d;
+  --text-primary: #e6edf3;
+  --text-secondary: #8b949e;
+  --text-muted: #6e7681;
+  --accent: #58a6ff;
+  --accent-subtle: #0d2240;
+  --code-bg: #0d1117;
+  --code-text: #e6edf3;
+  --success: #3fb950;
+  --warning: #d29922;
+  --danger: #f85149;
+  --step-bg: #1c2128;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+  background: var(--ground);
+  color: var(--text-primary);
+  line-height: 1.6;
+  padding: 2rem 1.5rem;
+  max-width: 52rem;
+  margin: 0 auto;
+}
+
+h1 {
+  font-size: 1.75rem;
+  font-weight: 700;
+  margin-bottom: 0.25rem;
+  letter-spacing: -0.02em;
+}
+
+.subtitle {
+  color: var(--text-secondary);
+  font-size: 0.95rem;
+  margin-bottom: 2.5rem;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 1.5rem;
+}
+
+h2 {
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin-top: 2.5rem;
+  margin-bottom: 1rem;
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+h2 .badge {
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 0.15rem 0.5rem;
+  border-radius: 3px;
+  background: var(--accent-subtle);
+  color: var(--accent);
+}
+
+h3 {
+  font-size: 1rem;
+  font-weight: 600;
+  margin-top: 1.5rem;
+  margin-bottom: 0.5rem;
+}
+
+p, li {
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+}
+
+.step-block {
+  background: var(--step-bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 1.25rem 1.5rem;
+  margin: 1rem 0;
+}
+
+.step-block h3 {
+  margin-top: 0;
+  color: var(--text-primary);
+}
+
+pre {
+  background: var(--code-bg);
+  color: var(--code-text);
+  font-family: 'JetBrains', 'Consolas', monospace;
+  font-size: 0.82rem;
+  line-height: 1.5;
+  padding: 1rem 1.25rem;
+  border-radius: 6px;
+  overflow-x: auto;
+  margin: 0.75rem 0;
+}
+
+code {
+  font-family: 'JetBrains', 'Consolas', monospace;
+  font-size: 0.82rem;
+  background: var(--step-bg);
+  border: 1px solid var(--border);
+  padding: 0.15rem 0.4rem;
+  border-radius: 3px;
+}
+
+pre code {
+  background: none;
+  border: none;
+  padding: 0;
+}
+
+.comment { color: var(--code-comment); }
+.cmd { color: var(--code-string); }
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 1rem 0;
+  font-size: 0.85rem;
+  font-variant-numeric: tabular-nums;
+}
+
+th, td {
+  text-align: left;
+  padding: 0.5rem 0.75rem;
+  border-bottom: 1px solid var(--border);
+}
+
+th {
+  font-weight: 600;
+  color: var(--text-primary);
+  background: var(--step-bg);
+}
+
+td { color: var(--text-secondary); }
+td code { font-size: 0.78rem; }
+
+.note {
+  border-left: 3px solid var(--warning);
+  padding: 0.75rem 1rem;
+  margin: 1rem 0;
+  background: var(--step-bg);
+  border-radius: 0 4px 4px 0;
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+}
+
+.note strong { color: var(--text-primary); }
+
+.branch-convention {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.25rem 1rem;
+  margin: 0.75rem 0;
+  font-size: 0.85rem;
+}
+
+.branch-convention dt {
+  font-family: 'JetBrains', 'Consolas', monospace;
+  font-size: 0.8rem;
+  color: var(--accent);
+  font-weight: 500;
+}
+
+.branch-convention dd { color: var(--text-secondary); }
+
+.divider {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 2.5rem 0;
+}
+</style>
+
+<h1>Git Workflow Guide</h1>
+<p class="subtitle">STM-DBT Verifier &mdash; Team branching workflow for <code>github.com/miteshgulati27/DBT_STM_Comversion</code></p>
+
+<h2>For New Team Members <span class="badge">One-time setup</span></h2>
+
+<div class="step-block">
+<h3>1. Clone the repository</h3>
+<pre><code><span class="cmd">git clone https://github.com/miteshgulati27/DBT_STM_Comversion.git</span>
+<span class="cmd">cd DBT_STM_Comversion</span></code></pre>
+</div>
+
+<div class="step-block">
+<h3>2. Set up Python environment</h3>
+<pre><code><span class="cmd">python -m venv .venv</span>
+<span class="cmd">.venv\Scripts\activate</span>
+<span class="cmd">pip install -r requirements.txt</span></code></pre>
+</div>
+
+<hr class="divider">
+
+<h2>Daily Workflow <span class="badge">Everyone</span></h2>
+
+<div class="step-block">
+<h3>Step 1 &mdash; Start from latest main</h3>
+<pre><code><span class="cmd">git checkout main</span>
+<span class="cmd">git pull origin main</span></code></pre>
+</div>
+
+<div class="step-block">
+<h3>Step 2 &mdash; Create your feature branch</h3>
+<pre><code><span class="cmd">git checkout -b feature/your-feature-name</span></code></pre>
+<p style="margin-top:0.5rem">Examples:</p>
+<dl class="branch-convention">
+  <dt>feature/add-wc-lob</dt><dd>New functionality</dd>
+  <dt>fix/sql-parser-bug</dt><dd>Bug fixes</dd>
+  <dt>enhancement/ui-improvements</dt><dd>Improvements to existing features</dd>
+</dl>
+</div>
+
+<div class="step-block">
+<h3>Step 3 &mdash; Do your work, commit often</h3>
+<pre><code><span class="comment"># Stage specific files</span>
+<span class="cmd">git add server/routes/compare.py services/rule_engine.py</span>
+
+<span class="comment"># Or stage all changes</span>
+<span class="cmd">git add -A</span>
+
+<span class="comment"># Commit with a clear message</span>
+<span class="cmd">git commit -m "Add WC LOB support with 12 models"</span></code></pre>
+</div>
+
+<div class="step-block">
+<h3>Step 4 &mdash; Push your branch to GitHub</h3>
+<pre><code><span class="cmd">git push origin feature/your-feature-name</span></code></pre>
+</div>
+
+<div class="step-block">
+<h3>Step 5 &mdash; Create a Pull Request on GitHub</h3>
+<p>Go to <code>github.com/miteshgulati27/DBT_STM_Comversion</code></p>
+<p>Click the <strong>"Compare &amp; pull request"</strong> banner that appears</p>
+<p>Add title + description, then click <strong>Create pull request</strong></p>
+</div>
+
+<div class="step-block">
+<h3>Step 6 &mdash; Review and merge</h3>
+<p>Reviewer approves the PR on GitHub, then clicks <strong>Merge pull request</strong></p>
+</div>
+
+<div class="step-block">
+<h3>Step 7 &mdash; Clean up after merge</h3>
+<pre><code><span class="cmd">git checkout main</span>
+<span class="cmd">git pull origin main</span>
+<span class="cmd">git branch -d feature/your-feature-name</span></code></pre>
+</div>
+
+<hr class="divider">
+
+<h2>Quick Reference</h2>
+
+<div style="overflow-x:auto">
+<table>
+<thead>
+<tr><th>Action</th><th>Command</th></tr>
+</thead>
+<tbody>
+<tr><td>See all branches</td><td><code>git branch -a</code></td></tr>
+<tr><td>Switch to a branch</td><td><code>git checkout branch-name</code></td></tr>
+<tr><td>Get latest main</td><td><code>git checkout main && git pull origin main</code></td></tr>
+<tr><td>Update your branch with latest main</td><td><code>git checkout your-branch && git merge main</code></td></tr>
+<tr><td>See what changed</td><td><code>git status</code></td></tr>
+<tr><td>See commit history</td><td><code>git log --oneline</code></td></tr>
+<tr><td>Discard local changes to a file</td><td><code>git restore filename.py</code></td></tr>
+<tr><td>Stash work temporarily</td><td><code>git stash</code> / <code>git stash pop</code></td></tr>
+</tbody>
+</table>
+</div>
+
+<hr class="divider">
+
+<h2>Branch Naming Convention</h2>
+
+<dl class="branch-convention">
+  <dt>feature/</dt><dd>New functionality</dd>
+  <dt>fix/</dt><dd>Bug fixes</dd>
+  <dt>enhancement/</dt><dd>Improvements to existing features</dd>
+  <dt>refactor/</dt><dd>Code restructuring (no behavior change)</dd>
+</dl>
+
+<hr class="divider">
+
+<h2>Handling Conflicts</h2>
+
+<div class="step-block">
+<h3>If your push is rejected (remote has newer changes)</h3>
+<pre><code><span class="cmd">git pull origin main --rebase</span>
+<span class="comment"># Fix any conflicts in your editor, then:</span>
+<span class="cmd">git add .</span>
+<span class="cmd">git rebase --continue</span>
+<span class="cmd">git push origin your-branch</span></code></pre>
+</div>
+
+<div class="note">
+<strong>Golden rule:</strong> Never push directly to <code>main</code>. Always use a branch + Pull Request.
+</div>
